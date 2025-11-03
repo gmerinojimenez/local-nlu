@@ -65,6 +65,7 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         learning_rate=training_config['learning_rate'],
+        num_epochs=training_config['num_epochs'],  # ADDED: Pass num_epochs for scheduler
         warmup_steps=training_config['warmup_steps'],
         weight_decay=training_config['weight_decay'],
         max_grad_norm=training_config['max_grad_norm'],

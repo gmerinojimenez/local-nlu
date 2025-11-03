@@ -22,6 +22,7 @@ class NLUTrainer:
                  train_loader: DataLoader,
                  val_loader: DataLoader,
                  learning_rate: float = 2e-5,
+                 num_epochs: int = 5,
                  warmup_steps: int = 500,
                  weight_decay: float = 0.01,
                  max_grad_norm: float = 1.0,
@@ -35,6 +36,7 @@ class NLUTrainer:
             train_loader: Training data loader
             val_loader: Validation data loader
             learning_rate: Learning rate
+            num_epochs: Total number of epochs (needed for scheduler)
             warmup_steps: Number of warmup steps
             weight_decay: Weight decay for optimizer
             max_grad_norm: Maximum gradient norm for clipping
@@ -59,8 +61,8 @@ class NLUTrainer:
             weight_decay=weight_decay
         )
 
-        # Setup scheduler
-        total_steps = len(train_loader)
+        # Setup scheduler - FIXED: Calculate total steps for ALL epochs
+        total_steps = len(train_loader) * num_epochs
         self.scheduler = get_linear_schedule_with_warmup(
             self.optimizer,
             num_warmup_steps=warmup_steps,

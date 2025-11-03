@@ -130,19 +130,65 @@ class T5NLUModel(nn.Module):
         # Decode
         output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
-        # Parse JSON
+        # Parse JSON with fallback for malformed output
         try:
             result = json.loads(output_text)
             return result
         except json.JSONDecodeError as e:
-            print(f"Warning: Failed to parse output JSON: {output_text}")
-            print(f"Error: {e}")
-            # Return a default structure
+            # Try to fix common issues with early training outputs
+            fixed_output = self._try_fix_json(output_text)
+            if fixed_output:
+                return fixed_output
+
+            # If still can't parse, return raw output
             return {
-                "intent": "UNSUPPORTED",
+                "intent": "PARSE_ERROR",
                 "params": {},
-                "raw_output": output_text
+                "raw_output": output_text,
+                "error": str(e)
             }
+
+    def _try_fix_json(self, text: str) -> Optional[Dict]:
+        """
+        Try to fix common JSON formatting issues from early training.
+
+        Args:
+            text: Raw output text
+
+        Returns:
+            Parsed dict if successful, None otherwise
+        """
+        # Common issue: Missing outer braces
+        if not text.strip().startswith('{'):
+            text = '{' + text
+        if not text.strip().endswith('}'):
+            text = text + '}'
+
+        # Try parsing again
+        try:
+            result = json.loads(text)
+            return result
+        except:
+            pass
+
+        # Try more aggressive fixes
+        # Issue: Missing braces around nested params
+        import re
+
+        # Pattern: "params": "key": value
+        # Fix to: "params": {"key": value}
+        text = re.sub(r'"params":\s*"', r'"params": {"', text)
+
+        # Add closing brace before end if needed
+        if '"params": {' in text and not re.search(r'"params":\s*\{[^}]*\}', text):
+            # Find last occurrence and add closing brace
+            text = re.sub(r'(\{[^}]*?)$', r'\1}', text)
+
+        try:
+            result = json.loads(text)
+            return result
+        except:
+            return None
 
     def predict_batch(self,
                      texts: List[str],
@@ -209,12 +255,19 @@ class T5NLUModel(nn.Module):
     @classmethod
     def from_pretrained(cls, load_directory: str):
         """Load model and tokenizer from directory."""
-        model = cls.__new__(cls)
-        model.model = T5ForConditionalGeneration.from_pretrained(load_directory)
-        model.tokenizer = T5Tokenizer.from_pretrained(load_directory)
-        model.model_name = load_directory
+        # Create instance properly
+        instance = object.__new__(cls)
+
+        # Call parent class init
+        nn.Module.__init__(instance)
+
+        # Load model and tokenizer
+        instance.model = T5ForConditionalGeneration.from_pretrained(load_directory)
+        instance.tokenizer = T5Tokenizer.from_pretrained(load_directory)
+        instance.model_name = load_directory
+
         print(f"Model loaded from {load_directory}")
-        return model
+        return instance
 
 
 if __name__ == "__main__":

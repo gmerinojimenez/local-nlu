@@ -85,6 +85,7 @@ def main():
 
         try:
             result = model.predict(text)
+            print(f"   Raw result: {result}")
 
             intent = result.get('intent', 'N/A')
             params = result.get('params', {})
