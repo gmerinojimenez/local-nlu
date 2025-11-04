@@ -84,21 +84,46 @@ def main():
         print(f"\n{i}. Input: \"{text}\"")
 
         try:
+            # Get raw model output
+            input_text = f"nlu: {text}"
+            inputs = model.tokenizer(
+                input_text,
+                return_tensors='pt',
+                max_length=128,
+                truncation=True,
+                padding=True
+            )
+
+            import torch
+            device = next(model.model.parameters()).device
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+
+            with torch.no_grad():
+                output_ids = model.generate(
+                    input_ids=inputs['input_ids'],
+                    attention_mask=inputs['attention_mask'],
+                    max_length=256,
+                    num_beams=4
+                )
+
+            raw_output = model.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            print(f"   Raw model output: {raw_output}")
+
+            # Now get parsed result
             result = model.predict(text)
-            print(f"   Raw result: {result}")
 
             intent = result.get('intent', 'N/A')
             params = result.get('params', {})
 
-            print(f"   Intent: {intent}")
+            print(f"   Parsed Intent: {intent}")
             if params:
-                print(f"   Params: {json.dumps(params, indent=11)[11:]}")  # Indent alignment
+                print(f"   Parsed Params: {json.dumps(params, indent=11)[11:]}")  # Indent alignment
             else:
-                print(f"   Params: (none)")
+                print(f"   Parsed Params: (none)")
 
             # Show raw output if parsing failed
             if 'raw_output' in result:
-                print(f"   ⚠ Raw output: {result['raw_output']}")
+                print(f"   ⚠ Warning: Fallback parsing used")
 
         except Exception as e:
             print(f"   ✗ Error: {e}")

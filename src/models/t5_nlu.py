@@ -236,30 +236,121 @@ class T5NLUModel(nn.Module):
         # Remove outer braces if present
         params_text = params_text.strip().strip('{}').strip()
 
-        # Find all "key": value patterns
-        # This regex finds key-value pairs
-        pattern = r'"([^"]+)":\s*(?:"([^"]*)"|(\d+(?:\.\d+)?)|(\{[^}]*\}))'
+        # Parse key-value pairs recursively
+        i = 0
+        while i < len(params_text):
+            # Find next key
+            key_match = re.match(r'\s*"([^"]+)"\s*:\s*', params_text[i:])
+            if not key_match:
+                i += 1
+                continue
 
-        for match in re.finditer(pattern, params_text):
-            key = match.group(1)
+            key = key_match.group(1)
+            i += key_match.end()
 
-            # Get the value from one of the groups
-            if match.group(2) is not None:  # String value
-                value = match.group(2)
-            elif match.group(3) is not None:  # Number value
-                value_str = match.group(3)
-                value = float(value_str) if '.' in value_str else int(value_str)
-            elif match.group(4) is not None:  # Dict value
-                try:
-                    value = json.loads(match.group(4))
-                except:
-                    value = match.group(4)
-            else:
-                value = ""
-
+            # Extract value starting at position i
+            value, consumed = self._extract_value(params_text[i:])
             params[key] = value
+            i += consumed
 
         return params
+
+    def _extract_value(self, text: str):
+        """
+        Extract a single value from text and return (value, characters_consumed).
+
+        Args:
+            text: Text starting at the value position
+
+        Returns:
+            Tuple of (parsed_value, num_characters_consumed)
+        """
+        import re
+
+        text = text.lstrip()
+
+        # String value
+        if text.startswith('"'):
+            # Find closing quote
+            end = 1
+            while end < len(text):
+                if text[end] == '"' and text[end-1] != '\\':
+                    return text[1:end], end + 1
+                end += 1
+            # Unclosed string
+            return text[1:], len(text)
+
+        # Numeric value
+        num_match = re.match(r'-?\d+(?:\.\d+)?', text)
+        if num_match:
+            value_str = num_match.group()
+            value = float(value_str) if '.' in value_str else int(value_str)
+            return value, num_match.end()
+
+        # Nested object
+        if text.startswith('{'):
+            # Count braces to find matching close brace
+            brace_count = 0
+            end = 0
+            for i, char in enumerate(text):
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end = i + 1
+                        break
+
+            if end > 0:
+                nested_text = text[1:end-1]  # Remove outer braces
+                nested_dict = self._parse_params_manually(nested_text)
+                return nested_dict, end
+            else:
+                # Unclosed braces - parse what we have
+                nested_dict = self._parse_params_manually(text[1:])
+                return nested_dict, len(text)
+
+        # Array
+        if text.startswith('['):
+            bracket_count = 0
+            end = 0
+            for i, char in enumerate(text):
+                if char == '[':
+                    bracket_count += 1
+                elif char == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        end = i + 1
+                        break
+
+            if end > 0:
+                try:
+                    array = json.loads(text[:end])
+                    return array, end
+                except:
+                    # Parse as string if JSON fails
+                    return text[:end], end
+            else:
+                return [], len(text)
+
+        # Boolean or null
+        if text.startswith('true'):
+            return True, 4
+        elif text.startswith('false'):
+            return False, 5
+        elif text.startswith('null'):
+            return None, 4
+
+        # Fallback: consume until comma or closing brace
+        end = 0
+        for i, char in enumerate(text):
+            if char in ',}]':
+                end = i
+                break
+        if end == 0:
+            end = len(text)
+
+        return text[:end].strip(), end
 
     def predict_batch(self,
                      texts: List[str],
