@@ -928,10 +928,9 @@
     "<extra_id_98>",
     "<extra_id_99>"
   ],
-  "clean_up_tokenization_spaces": false,
+  "clean_up_tokenization_spaces": true,
   "eos_token": "</s>",
   "extra_ids": 100,
-  "extra_special_tokens": {},
   "legacy": true,
   "model_max_length": 1000000000000000019884624838656,
   "pad_token": "<pad>",

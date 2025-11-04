@@ -15,7 +15,13 @@ if [ -z "$1" ]; then
         exit 1
     fi
 else
-    JOB_NAME=$1
+    # Extract job name from ARN if full ARN is provided
+    if [[ "$1" == arn:aws:sagemaker:* ]]; then
+        JOB_NAME=$(echo "$1" | sed 's/.*training-job\///')
+        echo "Extracted job name from ARN: $JOB_NAME"
+    else
+        JOB_NAME=$1
+    fi
 fi
 
 echo "Monitoring SageMaker job: $JOB_NAME"

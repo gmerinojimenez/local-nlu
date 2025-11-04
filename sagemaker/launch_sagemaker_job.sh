@@ -47,18 +47,28 @@ echo "Data uploaded to: $S3_BUCKET/data/processed/"
 # Step 3: Package and upload source code
 echo -e "\n[3/5] Packaging source code..."
 
-# Create source package from current directory
-tar -czf /tmp/nlu-source.tar.gz \
-    src/ \
-    sagemaker/train_sagemaker.py \
-    sagemaker/requirements.txt \
-    configs/ 2>/dev/null || echo "Warning: Some files may be missing"
+# Create a temporary directory with the correct structure for SageMaker
+TEMP_DIR=$(mktemp -d)
+cp -r src/ "$TEMP_DIR/"
+cp -r configs/ "$TEMP_DIR/"
+cp sagemaker/train_sagemaker.py "$TEMP_DIR/"
+cp sagemaker/requirements.txt "$TEMP_DIR/"
+
+# Create tar from the temp directory
+cd "$TEMP_DIR"
+tar -czf /tmp/nlu-source.tar.gz .
+cd - > /dev/null
+
+# Clean up
+rm -rf "$TEMP_DIR"
 
 # Verify tar file was created
 if [ ! -f /tmp/nlu-source.tar.gz ]; then
     echo "Error: Failed to create source package"
     exit 1
 fi
+
+echo "Source package created successfully"
 
 aws s3 cp /tmp/nlu-source.tar.gz "$S3_BUCKET/code/nlu-source.tar.gz" --profile "$AWS_PROFILE"
 echo "Code uploaded to: $S3_BUCKET/code/"

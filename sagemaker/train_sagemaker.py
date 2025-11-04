@@ -10,18 +10,26 @@ import torch
 import argparse
 from pathlib import Path
 
+# Add the code directory to Python path
+# SageMaker extracts code to /opt/ml/code
+CODE_DIR = '/opt/ml/code'
+if CODE_DIR not in sys.path:
+    sys.path.insert(0, CODE_DIR)
+
+print(f"Python path: {sys.path}")
+print(f"Code directory contents: {os.listdir(CODE_DIR)}")
+
 # SageMaker expects data in /opt/ml/input/data/
 # and outputs to go to /opt/ml/model/
 
 
 def train_model(args):
     """Main training function for SageMaker."""
-    # Import here to avoid issues if not in SageMaker environment
-    sys.path.append('/opt/ml/code')  # SageMaker code location
-
-    from src.models.t5_nlu import T5NLUModel
-    from src.data.dataset import create_data_loaders
-    from src.training.trainer import NLUTrainer
+    # Import after adding to path
+    # Note: In SageMaker, src/ structure is flattened to /opt/ml/code/
+    from models.t5_nlu import T5NLUModel
+    from data.dataset import create_data_loaders
+    from training.trainer import NLUTrainer
 
     print("=" * 80)
     print("SAGEMAKER TRAINING JOB")

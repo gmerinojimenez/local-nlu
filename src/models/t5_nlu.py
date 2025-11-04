@@ -150,7 +150,7 @@ class T5NLUModel(nn.Module):
 
     def _try_fix_json(self, text: str) -> Optional[Dict]:
         """
-        Try to fix common JSON formatting issues from early training.
+        Try to fix common JSON formatting issues from model output.
 
         Args:
             text: Raw output text
@@ -158,37 +158,108 @@ class T5NLUModel(nn.Module):
         Returns:
             Parsed dict if successful, None otherwise
         """
-        # Common issue: Missing outer braces
+        import re
+
+        # Strategy 1: Add outer braces if missing
+        original_text = text
         if not text.strip().startswith('{'):
             text = '{' + text
         if not text.strip().endswith('}'):
             text = text + '}'
 
-        # Try parsing again
+        # Try parsing
         try:
             result = json.loads(text)
             return result
         except:
             pass
 
-        # Try more aggressive fixes
-        # Issue: Missing braces around nested params
+        # Strategy 2: Use regex to extract intent and params separately
+        try:
+            # Extract intent
+            intent_match = re.search(r'"intent":\s*"([^"]+)"', original_text)
+            intent = intent_match.group(1) if intent_match else None
+
+            if not intent:
+                return None
+
+            # Extract params section
+            params_match = re.search(r'"params":\s*(.+?)(?:$|(?="intent"))', original_text, re.DOTALL)
+
+            if params_match:
+                params_text = params_match.group(1).strip()
+
+                # Remove trailing quote if present
+                params_text = params_text.rstrip('"').rstrip(',').rstrip()
+
+                # Try to parse params as JSON object
+                # Add braces if missing
+                if not params_text.startswith('{'):
+                    params_text = '{' + params_text
+                if not params_text.endswith('}'):
+                    # Count braces to see how many we need
+                    open_braces = params_text.count('{')
+                    close_braces = params_text.count('}')
+                    missing = open_braces - close_braces
+                    params_text = params_text + ('}' * missing)
+
+                try:
+                    params = json.loads(params_text)
+                except:
+                    # If still fails, try to parse key-value pairs manually
+                    params = self._parse_params_manually(params_text)
+            else:
+                params = {}
+
+            return {
+                'intent': intent,
+                'params': params
+            }
+
+        except Exception as e:
+            return None
+
+    def _parse_params_manually(self, params_text: str) -> Dict:
+        """
+        Manually parse parameters from malformed JSON.
+
+        Args:
+            params_text: The params portion of text
+
+        Returns:
+            Dictionary of parsed parameters
+        """
         import re
 
-        # Pattern: "params": "key": value
-        # Fix to: "params": {"key": value}
-        text = re.sub(r'"params":\s*"', r'"params": {"', text)
+        params = {}
 
-        # Add closing brace before end if needed
-        if '"params": {' in text and not re.search(r'"params":\s*\{[^}]*\}', text):
-            # Find last occurrence and add closing brace
-            text = re.sub(r'(\{[^}]*?)$', r'\1}', text)
+        # Remove outer braces if present
+        params_text = params_text.strip().strip('{}').strip()
 
-        try:
-            result = json.loads(text)
-            return result
-        except:
-            return None
+        # Find all "key": value patterns
+        # This regex finds key-value pairs
+        pattern = r'"([^"]+)":\s*(?:"([^"]*)"|(\d+(?:\.\d+)?)|(\{[^}]*\}))'
+
+        for match in re.finditer(pattern, params_text):
+            key = match.group(1)
+
+            # Get the value from one of the groups
+            if match.group(2) is not None:  # String value
+                value = match.group(2)
+            elif match.group(3) is not None:  # Number value
+                value_str = match.group(3)
+                value = float(value_str) if '.' in value_str else int(value_str)
+            elif match.group(4) is not None:  # Dict value
+                try:
+                    value = json.loads(match.group(4))
+                except:
+                    value = match.group(4)
+            else:
+                value = ""
+
+            params[key] = value
+
+        return params
 
     def predict_batch(self,
                      texts: List[str],
