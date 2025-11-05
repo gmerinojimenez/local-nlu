@@ -4,6 +4,7 @@ Test a specific checkpoint during or after training.
 import sys
 from pathlib import Path
 import json
+import time
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -84,6 +85,8 @@ def main():
         print(f"\n{i}. Input: \"{text}\"")
 
         try:
+            start_time = time.time()
+
             # Get raw model output
             input_text = f"nlu: {text}"
             inputs = model.tokenizer(
@@ -107,10 +110,15 @@ def main():
                 )
 
             raw_output = model.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            print(f"   Raw model output: {raw_output}")
 
             # Now get parsed result
             result = model.predict(text)
+
+            end_time = time.time()
+            inference_time = (end_time - start_time) * 1000  # Convert to milliseconds
+
+            print(f"   Raw model output: {raw_output}")
+            print(f"   Inference time: {inference_time:.2f}ms")
 
             intent = result.get('intent', 'N/A')
             params = result.get('params', {})
@@ -144,7 +152,10 @@ def main():
             if not user_input:
                 continue
 
+            start_time = time.time()
             result = model.predict(user_input)
+            end_time = time.time()
+            inference_time = (end_time - start_time) * 1000
 
             intent = result.get('intent', 'N/A')
             params = result.get('params', {})
@@ -154,6 +165,7 @@ def main():
                 print(f"Params: {json.dumps(params, indent=2)}")
             else:
                 print(f"Params: (none)")
+            print(f"Inference time: {inference_time:.2f}ms")
 
             if 'raw_output' in result:
                 print(f"⚠ Raw output: {result['raw_output']}")
