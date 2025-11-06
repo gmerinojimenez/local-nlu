@@ -955,8 +955,8 @@
   "pre_tokenizer": {
     "type": "Metaspace",
     "replacement": "▁",
-    "prepend_scheme": "always",
-    "split": true
+    "split": true,
+    "add_prefix_space": true
   },
   "post_processor": {
     "type": "TemplateProcessing",

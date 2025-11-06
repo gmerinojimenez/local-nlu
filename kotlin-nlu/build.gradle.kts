@@ -15,7 +15,7 @@ dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime:1.16.3")
 
     // HuggingFace Tokenizers for proper T5 tokenization
-    implementation("ai.djl.huggingface:tokenizers:0.27.0")
+    implementation("ai.djl.huggingface:tokenizers:0.30.0")
 
     // JSON parsing
     implementation("org.json:json:20231013")
