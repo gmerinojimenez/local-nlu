@@ -26,3 +26,8 @@ matplotlib>=3.7.0
 # Development
 jupyter>=1.0.0
 ipython>=8.14.0
+
+# gRPC dependencies for model serving
+grpcio>=1.59.0
+grpcio-tools>=1.59.0
+protobuf>=4.24.0

@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package nlu;
+
+// NLU Service for intent classification and parameter extraction
+service NLUService {
+  // Single prediction
+  rpc Predict(PredictRequest) returns (PredictResponse) {}
+
+  // Batch predictions
+  rpc PredictBatch(PredictBatchRequest) returns (PredictBatchResponse) {}
+
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse) {}
+}
+
+// Request for single prediction
+message PredictRequest {
+  string text = 1;                // Input utterance
+  optional int32 max_length = 2;  // Maximum generation length (default: 256)
+  optional int32 num_beams = 3;   // Number of beams for beam search (default: 4)
+}
+
+// Response for single prediction
+message PredictResponse {
+  string intent = 1;                    // Predicted intent
+  map<string, string> params = 2;       // Extracted parameters as string key-value pairs
+  optional string raw_output = 3;       // Raw model output (for debugging)
+  optional string error = 4;            // Error message if parsing failed
+  float inference_time_ms = 5;          // Inference time in milliseconds
+}
+
+// Request for batch predictions
+message PredictBatchRequest {
+  repeated string texts = 1;      // List of input utterances
+  optional int32 max_length = 2;  // Maximum generation length (default: 256)
+  optional int32 num_beams = 3;   // Number of beams for beam search (default: 4)
+}
+
+// Response for batch predictions
+message PredictBatchResponse {
+  repeated PredictResponse predictions = 1;  // List of predictions
+  float total_inference_time_ms = 2;         // Total inference time in milliseconds
+}
+
+// Health check request
+message HealthCheckRequest {}
+
+// Health check response
+message HealthCheckResponse {
+  bool is_healthy = 1;         // Server health status
+  string model_name = 2;       // Loaded model name
+  string device = 3;           // Device being used (cpu, cuda, npu, etc.)
+  int64 model_parameters = 4;  // Number of model parameters
+}
