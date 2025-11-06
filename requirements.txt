@@ -31,3 +31,10 @@ ipython>=8.14.0
 grpcio>=1.59.0
 grpcio-tools>=1.59.0
 protobuf>=4.24.0
+
+# ONNX and NPU support (optional - install only if deploying to NPU)
+# onnx>=1.15.0  # ONNX model format
+# onnxscript>=0.1.0  # Required for torch.onnx.export
+# onnxruntime>=1.16.0  # For CPU inference
+# onnxruntime-qnn>=1.16.0  # For Qualcomm Snapdragon NPU (Hexagon)
+# optimum[onnxruntime]>=1.14.0  # For optimized ONNX export

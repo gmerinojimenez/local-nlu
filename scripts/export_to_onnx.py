@@ -46,63 +46,8 @@ def export_to_onnx(model_path: str, output_dir: str):
     print("\nExporting encoder-decoder model to ONNX...")
     print("Note: T5 is an encoder-decoder model, so we'll export it in parts")
 
-    # Export encoder
-    print("\n1. Exporting encoder...")
-    encoder_path = output_path / "t5_nlu_encoder.onnx"
-
-    torch.onnx.export(
-        model.model.encoder,
-        (dummy_inputs['input_ids'], dummy_inputs['attention_mask']),
-        str(encoder_path),
-        input_names=['input_ids', 'attention_mask'],
-        output_names=['last_hidden_state'],
-        dynamic_axes={
-            'input_ids': {0: 'batch', 1: 'sequence'},
-            'attention_mask': {0: 'batch', 1: 'sequence'},
-            'last_hidden_state': {0: 'batch', 1: 'sequence'}
-        },
-        opset_version=14,
-        do_constant_folding=True
-    )
-    print(f"✓ Encoder exported to: {encoder_path}")
-
-    # For decoder, we need to create decoder inputs
-    print("\n2. Exporting decoder...")
-    decoder_path = output_path / "t5_nlu_decoder.onnx"
-
-    # Get encoder outputs first
-    with torch.no_grad():
-        encoder_outputs = model.model.encoder(
-            input_ids=dummy_inputs['input_ids'],
-            attention_mask=dummy_inputs['attention_mask']
-        )
-
-    # Create decoder inputs
-    decoder_input_ids = torch.tensor([[0]])  # Start token
-
-    torch.onnx.export(
-        model.model.decoder,
-        (
-            decoder_input_ids,
-            dummy_inputs['attention_mask'],
-            encoder_outputs.last_hidden_state
-        ),
-        str(decoder_path),
-        input_names=['decoder_input_ids', 'encoder_attention_mask', 'encoder_hidden_states'],
-        output_names=['logits'],
-        dynamic_axes={
-            'decoder_input_ids': {0: 'batch', 1: 'decoder_sequence'},
-            'encoder_attention_mask': {0: 'batch', 1: 'encoder_sequence'},
-            'encoder_hidden_states': {0: 'batch', 1: 'encoder_sequence'},
-            'logits': {0: 'batch', 1: 'decoder_sequence'}
-        },
-        opset_version=14,
-        do_constant_folding=True
-    )
-    print(f"✓ Decoder exported to: {decoder_path}")
-
-    # Also try to export the full model using transformers' optimum library
-    print("\n3. Attempting to export full model using Optimum (if available)...")
+    # Try to export the full model using transformers' optimum library
+    print("\nAttempting to export full model using Optimum...")
     try:
         from optimum.onnxruntime import ORTModelForSeq2SeqLM
         from transformers import AutoTokenizer
