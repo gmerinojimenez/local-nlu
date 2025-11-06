@@ -85,6 +85,9 @@ class NLUServicer(nlu_service_pb2_grpc.NLUServiceServicer):
             max_length = request.max_length if request.max_length > 0 else 256
             num_beams = request.num_beams if request.num_beams > 0 else 4
 
+            # Debug: Log input
+            logger.debug(f"Predict request - text: '{request.text}', max_length: {max_length}, num_beams: {num_beams}")
+
             # Run prediction
             result = self.model.predict(
                 text=request.text,
@@ -93,6 +96,11 @@ class NLUServicer(nlu_service_pb2_grpc.NLUServiceServicer):
             )
 
             inference_time = (time.time() - start_time) * 1000  # Convert to ms
+
+            # Debug: Log raw model output
+            logger.debug(f"Raw model output: {result}")
+            if "raw_output" in result:
+                logger.debug(f"Raw output field: {result['raw_output']}")
 
             # Convert params dict to string map for protobuf
             params_map = {}
@@ -146,6 +154,10 @@ class NLUServicer(nlu_service_pb2_grpc.NLUServiceServicer):
             max_length = request.max_length if request.max_length > 0 else 256
             num_beams = request.num_beams if request.num_beams > 0 else 4
 
+            # Debug: Log input
+            logger.debug(f"PredictBatch request - {len(request.texts)} texts, max_length: {max_length}, num_beams: {num_beams}")
+            logger.debug(f"Batch texts: {list(request.texts)}")
+
             # Run batch prediction
             results = self.model.predict_batch(
                 texts=list(request.texts),
@@ -155,9 +167,16 @@ class NLUServicer(nlu_service_pb2_grpc.NLUServiceServicer):
 
             total_inference_time = (time.time() - start_time) * 1000  # Convert to ms
 
+            # Debug: Log raw results
+            logger.debug(f"Batch raw results: {results}")
+
             # Build responses
             predictions = []
-            for result in results:
+            for i, result in enumerate(results):
+                # Debug: Log individual result
+                logger.debug(f"Batch result [{i}]: {result}")
+                if "raw_output" in result:
+                    logger.debug(f"Batch result [{i}] raw_output: {result['raw_output']}")
                 # Convert params dict to string map
                 params_map = {}
                 if "params" in result and isinstance(result["params"], dict):
@@ -299,8 +318,20 @@ def main():
         choices=["cpu", "cuda", "npu"],
         help="Device to run inference on (default: cpu)"
     )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level (default: INFO)"
+    )
 
     args = parser.parse_args()
+
+    # Set logging level
+    log_level = getattr(logging, args.log_level)
+    logging.getLogger().setLevel(log_level)
+    logger.setLevel(log_level)
 
     # Verify model path exists
     model_path = Path(args.model_path)
