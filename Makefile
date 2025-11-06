@@ -10,8 +10,9 @@ help:
 	@echo ""
 	@echo "Usage examples:"
 	@echo "  make generate-grpc"
-	@echo "  make server MODEL_PATH=checkpoints/best_model"
-	@echo "  make server MODEL_PATH=checkpoints/best_model DEVICE=npu"
+	@echo "  make server MODEL_PATH=models/best_model"
+	@echo "  make server MODEL_PATH=models/best_model DEVICE=npu"
+	@echo "  make server MODEL_PATH=models/best_model LOG_LEVEL=DEBUG"
 	@echo "  make client TEXT='set a timer for 5 minutes'"
 
 install-grpc:
@@ -31,7 +32,8 @@ server:
 		--model-path $(MODEL_PATH) \
 		--device $(or $(DEVICE),cpu) \
 		--port $(or $(PORT),50051) \
-		--host $(or $(HOST),0.0.0.0)
+		--host $(or $(HOST),0.0.0.0) \
+		--log-level $(or $(LOG_LEVEL),INFO)
 
 client:
 	@if [ -n "$(TEXT)" ]; then \

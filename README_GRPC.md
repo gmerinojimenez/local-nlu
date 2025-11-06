@@ -47,9 +47,18 @@ python src/inference/grpc_server.py \
 For NPU (Ascend):
 ```bash
 python src/inference/grpc_server.py \
-    --model-path checkpoints/best_model \
+    --model-path models/best_model \
     --device npu \
     --port 50051
+```
+
+With debug logging (to see raw model outputs):
+```bash
+python src/inference/grpc_server.py \
+    --model-path models/best_model \
+    --device cpu \
+    --port 50051 \
+    --log-level DEBUG
 ```
 
 ### 2. Test with the client
@@ -192,9 +201,26 @@ Run the code generation script:
 - Reduce `--num-beams` (e.g., 2 instead of 4)
 - Use batch predictions for multiple texts
 
+## Debugging
+
+If you want to see the raw model outputs for debugging:
+
+```bash
+# Start server with debug logging
+make server MODEL_PATH=models/best_model LOG_LEVEL=DEBUG
+
+# Or directly
+python src/inference/grpc_server.py \
+    --model-path models/best_model \
+    --log-level DEBUG
+```
+
+See [docs/DEBUG_LOGGING.md](docs/DEBUG_LOGGING.md) for detailed debugging guide.
+
 ## Next Steps
 
 - Read the full documentation: [docs/GRPC_SERVICE.md](docs/GRPC_SERVICE.md)
+- Learn about debug logging: [docs/DEBUG_LOGGING.md](docs/DEBUG_LOGGING.md)
 - Deploy to production with Docker/Kubernetes
 - Add TLS/SSL for secure communication
 - Implement authentication and authorization
